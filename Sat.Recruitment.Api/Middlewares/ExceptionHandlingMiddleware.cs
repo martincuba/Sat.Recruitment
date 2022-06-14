@@ -27,27 +27,26 @@ namespace Sat.Recruitment.Api.Middlewares
             {
                 var response = context.Response;
                 response.ContentType = "application/json";
-
-                var errorResponse = new ErrorResponse
-                {
-                    Success = false
-                };
+                string errorResponseMesssage;
 
                 switch (error)
                 {
                     case ApplicationException or DomainException:
                         // custom application error
                         response.StatusCode = (int)HttpStatusCode.BadRequest;
-                        errorResponse.Message = error.Message;
+                        errorResponseMesssage = error.Message;
                         break;
                     default:
                         // unhandled error
                         response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                        errorResponse.Message = "Internal Server errors.";
+                        errorResponseMesssage = "Internal Server errors.";
                         break;
                 }
 
-                var result = JsonSerializer.Serialize(errorResponse);
+                var result = JsonSerializer.Serialize(new ErrorResponse
+                {
+                    Message = errorResponseMesssage
+                });
                 await response.WriteAsync(result);
             }
         }
