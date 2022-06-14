@@ -1,4 +1,5 @@
-﻿using Moq;
+﻿using FluentValidation;
+using Moq;
 using Shared.Domain;
 using Users.Application.Commands.Create;
 using Users.Domain;
@@ -10,8 +11,9 @@ namespace Users.UnitTest.Users.Application.Commands.Create
 {
     public class CreateUserCoammndHandlerTest
     {
-        private readonly Mock<IGifCalculateGetter> gifCalculateGetterMock = new();
-        private readonly Mock<IUserRepository> userRepositoryMock = new();
+        private readonly Mock<IGifCalculateGetter> gifCalculateGetterMock = new ();
+        private readonly Mock<IUserRepository> userRepositoryMock = new ();
+        private CreateUserCommandValidator validationRules;
         private CreateUserCommandHandler createUserCoammndHandler;
 
         public CreateUserCoammndHandlerTest()
@@ -24,9 +26,12 @@ namespace Users.UnitTest.Users.Application.Commands.Create
                 .Setup(x => x.Search(It.IsAny<ISpecification<User>>()))
                 .Verifiable();
 
-            this.createUserCoammndHandler = new(
+            this.validationRules = new (this.userRepositoryMock.Object);
+
+            this.createUserCoammndHandler = new (
                 this.gifCalculateGetterMock.Object,
-                this.userRepositoryMock.Object);
+                this.userRepositoryMock.Object,
+                this.validationRules);
         }
 
         [Theory]
@@ -46,7 +51,7 @@ namespace Users.UnitTest.Users.Application.Commands.Create
 
             var validCommand = DataProvider.ValidCommand();
 
-            Assert.ThrowsAsync<ApplicationException>(
+            Assert.ThrowsAsync<ValidationException>(
                () =>  this.createUserCoammndHandler.Handle(validCommand, CancellationToken.None));
 
             this.userRepositoryMock

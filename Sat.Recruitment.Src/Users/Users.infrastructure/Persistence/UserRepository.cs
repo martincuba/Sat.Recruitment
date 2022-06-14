@@ -1,5 +1,6 @@
 ﻿using Shared.Domain;
 using Shared.Domain.Exceptions;
+using Shared.Infrastructure.Persistence.File;
 using Users.Domain;
 
 namespace Users.infrastructure.Persistence
@@ -7,49 +8,47 @@ namespace Users.infrastructure.Persistence
     public class UserRepository : IUserRepository
     {
         private const string SavedUsersFilePath = "/Files/Users.txt";
+        private readonly IFilePersistence filePersistence;
+
+        public UserRepository(IFilePersistence filePersistence)
+        {
+            this.filePersistence = filePersistence;
+        }
 
         public async Task Save(User user)
         {
-            using (StreamWriter usersFile = new(GetFilePath(), append: true))
+            try
             {
-                await usersFile.WriteLineAsync(UserFileMapper.ToLine(user));
+                await this.filePersistence.WriteLine(
+                    GetFilePath(),
+                    appendData: true,
+                    UserFileMapper.ToLine(user));
+            }
+            catch (Exception ex)
+            {
+                throw new RepositoryException("An error ocurred trying to save a user", ex);
             }
         }
 
         public async Task<User?> Search(ISpecification<User> specification)
         {
-            var users = await this.GetAll();
-            foreach (var savedUser in users)
-            {
-                if (specification.IsSatisfied(savedUser))
-                {
-                    return savedUser;
-                }
-            }
-
-            return null;
-        }
-
-        private async Task<List<User>> GetAll()
-        {
             try
             {
-                FileStream fileStream = new (GetFilePath(), FileMode.Open);
-                StreamReader reader = new (fileStream);
+                var stringUsers = await this.filePersistence.Read(GetFilePath());
 
-                List<User> users = new();
-
-                while (reader.Peek() >= 0)
+                foreach (var userAsString in stringUsers)
                 {
-                    var line = await reader.ReadLineAsync();
-                    var user = UserFileMapper.ToUser(line);
-                    users.Add(user);
-                }
-                reader.Close();
+                    var savedUser = UserFileMapper.ToUser(userAsString);
 
-                return users;
+                    if (specification.IsSatisfied(savedUser))
+                    {
+                        return savedUser;
+                    }
+                }
+
+                return null;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 throw new RepositoryException("An error ocurred trying to get users", ex);
             }

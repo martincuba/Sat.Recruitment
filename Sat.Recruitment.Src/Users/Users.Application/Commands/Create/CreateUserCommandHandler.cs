@@ -1,8 +1,7 @@
-﻿using MediatR;
+﻿using FluentValidation;
+using MediatR;
 using Users.Domain;
-using Users.Domain.Specifications;
 using Users.Domain.UserGif.Getter;
-using ApplicationException = Shared.Domain.Exceptions.ApplicationException;
 
 namespace Users.Application.Commands.Create
 {
@@ -10,29 +9,23 @@ namespace Users.Application.Commands.Create
     {
         private readonly IGifCalculateGetter gifCalculateGetter;
         private readonly IUserRepository userRepository;
+        private readonly IValidator<CreateUserCommand> validator;
 
         public CreateUserCommandHandler(
             IGifCalculateGetter gifCalculateGetter,
-            IUserRepository userRepository)
+            IUserRepository userRepository,
+            IValidator<CreateUserCommand> validator)
         {
             this.gifCalculateGetter = gifCalculateGetter;
             this.userRepository = userRepository;
+            this.validator = validator;
         }
 
         public async Task<Unit> Handle(CreateUserCommand createUserCommand, CancellationToken cancellationToken)
         {
+            await this.validator.ValidateAndThrowAsync(createUserCommand, cancellationToken);
+
             var newUser = CreateUserCommandMapper.Execute(createUserCommand);
-
-            var existingUser = await this.userRepository.Search(new ExistingUserSpecification(
-                newUser.Name,
-                newUser.Email,
-                newUser.Address,
-                newUser.Phone));
-
-            if (existingUser is not null)
-            {
-                throw new ApplicationException("The user is duplicated");
-            }
 
             newUser.AddMoney(this.gifCalculateGetter
                 .GetCalculator(newUser.UserType).Execute(newUser.Money));
