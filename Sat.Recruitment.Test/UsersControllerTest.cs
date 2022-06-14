@@ -34,7 +34,7 @@ namespace Sat.Recruitment.Test
 
             var createUserDto = DataProvider.ValidCreateUserRequest();
 
-            var result = await this.usersController.CreateUserAsync(createUserDto);
+            var result = await this.usersController.Post(createUserDto);
 
             this.mediatorMock
                 .Verify(x => x
